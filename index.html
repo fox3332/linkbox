@@ -56,6 +56,7 @@ button.bad{color:var(--bad)}
 .st-new{color:var(--warn)}.st-working{color:var(--ac)}.st-done{color:var(--ok)}
 .item .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .item .acts button{padding:4px 9px;font-size:13px}
+.embed.tt{aspect-ratio:9/16;max-width:340px;display:block}
 .embed{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;margin-top:8px;background:#000}
 
 /* 모달 */
@@ -338,12 +339,26 @@ function itemHtml(l){
       ${l.memo?`<div class="sub">${esc(l.memo)}</div>`:""}
       <div class="sub">${new Date(l.created_at).toLocaleDateString("ko-KR")}</div>
       <div class="acts">
-        ${yt?`<button data-a="play">▶ 재생</button>`:""}
+        ${(yt||l.platform==="tiktok")?`<button data-a="play">▶ 재생</button>`:""}
         <button data-a="st">상태</button><button data-a="cat">폴더 이동</button><button data-a="memo">메모</button><button data-a="del" class="bad">삭제</button>
       </div>
       <div class="embedbox"></div>
     </div>
   </div>`;
+}
+
+/* 틱톡: 영상 ID로 앱 안 재생. 짧은 링크(vt.tiktok.com)는 oEmbed로 ID를 알아낸다. */
+async function tiktokId(u){
+  const m=u.match(/\/video\/(\d{8,})/); if(m) return m[1];
+  let cache={}; try{ cache=JSON.parse(localStorage.getItem("ttCache")||"{}"); }catch{}
+  if(cache[u]) return cache[u];
+  try{
+    const r=await fetch("https://www.tiktok.com/oembed?url="+encodeURIComponent(u));
+    const j=await r.json();
+    const id=j.embed_product_id || ((j.html||"").match(/player\/v1\/(\d+)/)||[])[1];
+    if(id){ cache[u]=id; try{ localStorage.setItem("ttCache",JSON.stringify(cache)); }catch{} return id; }
+  }catch{}
+  return null;
 }
 
 /* ---------- 목록 동작 ---------- */
@@ -353,7 +368,16 @@ $("list").onclick = async (e)=>{
   const a=b.dataset.a;
   if(a==="play"){
     const box=it.querySelector(".embedbox");
-    box.innerHTML = box.innerHTML ? "" : `<iframe class="embed" src="https://www.youtube-nocookie.com/embed/${esc(youtubeId(l.url))}?playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+    if(box.innerHTML){ box.innerHTML=""; return; }
+    if(l.platform==="youtube"){
+      box.innerHTML=`<iframe class="embed" src="https://www.youtube-nocookie.com/embed/${esc(youtubeId(l.url))}?playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+    } else if(l.platform==="tiktok"){
+      box.innerHTML=`<div class="sub" style="margin-top:8px">틱톡 영상 불러오는 중…</div>`;
+      const id=await tiktokId(l.url);
+      box.innerHTML = id
+        ? `<iframe class="embed tt" src="https://www.tiktok.com/player/v1/${esc(id)}?music_info=1&description=1" allow="fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>`
+        : `<div class="sub" style="margin-top:8px">이 틱톡은 앱 안에서 재생할 수 없어요. 위의 링크를 눌러 열어 주세요.</div>`;
+    }
   } else if(a==="st"){
     const nx={new:"working",working:"done",done:"new"}[l.status]||"new";
     await patch(l,{status:nx});

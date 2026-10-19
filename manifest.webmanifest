@@ -1,8 +1,8 @@
 {
   "name": "링크 보관함",
   "short_name": "링크보관함",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/linkbox/index.html",
+  "scope": "/linkbox/",
   "display": "standalone",
   "background_color": "#111318",
   "theme_color": "#111318",
@@ -27,7 +27,7 @@
     }
   ],
   "share_target": {
-    "action": "./index.html",
+    "action": "/linkbox/index.html",
     "method": "GET",
     "params": {
       "title": "title",
@@ -35,5 +35,5 @@
       "url": "url"
     }
   },
-  "id": "./index.html"
+  "id": "/linkbox/index.html"
 }
