@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>링크 보관함</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#111318">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="링크보관함">
+<style>
+:root{--bg:#111318;--card:#1b1f29;--line:#2a3040;--tx:#e8ecf4;--sub:#8b94a8;--ac:#7cc4ff;--ok:#6fd49a;--warn:#f0b35a;--bad:#ff7b7b}
+@media (prefers-color-scheme: light){:root{--bg:#f4f6fa;--card:#fff;--line:#dde2ec;--tx:#1a2030;--sub:#6a7388;--ac:#1d7fd6;--ok:#1f9a5a;--warn:#c27a10;--bad:#d03a3a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Noto Sans KR",sans-serif;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
+.wrap{max-width:640px;margin:0 auto;padding:14px 0 60px}
+h1{font-size:19px;margin:6px 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+textarea,input[type=text],input[type=email],input[type=password]{width:100%;background:transparent;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+textarea{min-height:70px;resize:vertical}
+button{font:inherit;border:1px solid var(--line);background:transparent;color:var(--tx);border-radius:10px;padding:8px 12px;cursor:pointer}
+button.pri{background:var(--ac);border-color:var(--ac);color:#06121f;font-weight:700}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.chip{padding:5px 11px;border-radius:99px;border:1px solid var(--line);color:var(--sub);font-size:13px;cursor:pointer;user-select:none}
+.chip.on{background:var(--ac);border-color:var(--ac);color:#06121f;font-weight:600}
+.sub{color:var(--sub);font-size:13px}
+.item{border-top:1px solid var(--line);padding:12px 0}
+.item:first-child{border-top:0}
+.item a{color:var(--ac);word-break:break-all;text-decoration:none}
+.tag{font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--sub)}
+.st-new{color:var(--warn)}.st-working{color:var(--ac)}.st-done{color:var(--ok)}
+#msg{position:fixed;left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:608px;margin:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:none;z-index:9}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔗 링크 보관함</h1>
+
+  <div id="setup" class="card hide">
+    <b>설정이 비어 있어요</b>
+    <p class="sub">config.js 에 Supabase URL 과 anon 키를 채운 뒤 다시 올려주세요.</p>
+  </div>
+
+  <div id="login" class="card hide">
+    <b>로그인</b>
+    <div class="row" style="margin-top:10px;flex-direction:column;align-items:stretch">
+      <input id="em" type="email" placeholder="이메일" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+      <input id="pw" type="password" placeholder="비밀번호" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false">
+      <label class="sub"><input type="checkbox" id="showPw"> 비밀번호 보기</label>
+      <button class="pri" id="btnLogin">로그인</button>
+    </div>
+  </div>
+
+  <div id="main" class="hide">
+    <div class="card">
+      <textarea id="inp" placeholder="링크(또는 공유 문구 통째로)를 붙여넣으세요. 여러 개도 돼요."></textarea>
+      <div class="row" style="margin-top:8px">
+        <button id="btnPaste">📋 붙여넣기</button>
+        <span class="sub" id="found"></span>
+      </div>
+      <div class="sub" style="margin-top:10px">카테고리 (여러 개 선택 가능)</div>
+      <div class="chips" id="pickCats"></div>
+      <input id="memo" type="text" placeholder="메모 (선택)">
+      <div class="row" style="margin-top:10px">
+        <button class="pri" id="btnSave">저장</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <input id="q" type="text" placeholder="검색 (링크·메모)" style="flex:1">
+      </div>
+      <div class="chips" id="filterCats"></div>
+      <div class="row sub" id="statusFilter"></div>
+      <div id="list" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card">
+      <b>카테고리 관리</b>
+      <div class="row" style="margin-top:8px">
+        <input id="newCat" type="text" placeholder="새 카테고리 이름" style="flex:1">
+        <button id="btnAddCat">추가</button>
+      </div>
+      <div class="chips" id="manageCats"></div>
+      <div class="sub">칩을 길게 누르면(또는 ✕) 삭제돼요. 이미 저장된 링크의 분류는 그대로 남아요.</div>
+    </div>
+
+    <div class="row"><button id="btnOut" class="sub">로그아웃</button></div>
+  </div>
+</div>
+<div id="msg"></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const cfg = window.LINKBOX_CONFIG || {};
+let sb, cats = [], links = [];
+let pick = new Set(), filterCat = null, filterStatus = "all";
+
+function toast(t){const m=$("msg");m.textContent=t;m.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>m.style.display="none",2600);}
+const esc = (s)=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function platformOf(u){
+  let h=""; try{h=new URL(u).hostname.toLowerCase();}catch{}
+  if(/(^|\.)(tiktok\.com)$/.test(h)) return "tiktok";
+  if(/(^|\.)(xiaohongshu\.com|xhslink\.com)$/.test(h)) return "xhs";
+  if(/(^|\.)(youtube\.com|youtu\.be)$/.test(h)) return "youtube";
+  return "etc";
+}
+const PLAT = {tiktok:"틱톡",xhs:"샤오홍슈",youtube:"유튜브",etc:"기타"};
+
+function extractUrls(text){
+  const m = (text||"").match(/https?:\/\/[^\s<>"'，。！）)\]]+/g) || [];
+  const out=[]; for(let u of m){ u=u.replace(/[.,;!?，。]+$/,""); if(!out.includes(u)) out.push(u); }
+  return out;
+}
+
+async function init(){
+  if(!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY){ $("setup").classList.remove("hide"); return; }
+  sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+  const {data} = await sb.auth.getSession();
+  if(data.session) await enter(); else $("login").classList.remove("hide");
+}
+
+async function enter(){
+  $("login").classList.add("hide"); $("main").classList.remove("hide");
+  // 공유 버튼으로 들어온 경우(안드로이드)
+  const p = new URLSearchParams(location.search);
+  const shared = [p.get("title"),p.get("text"),p.get("url")].filter(Boolean).join("\n");
+  if(shared){ $("inp").value = shared; history.replaceState(null,"",location.pathname); updateFound(); }
+  await loadAll();
+}
+
+$("btnLogin").onclick = async ()=>{
+  const {error} = await sb.auth.signInWithPassword({email:$("em").value.trim().toLowerCase(),password:$("pw").value.trim()});
+  if(error) return toast("로그인 실패: "+error.message);
+  await enter();
+};
+$("showPw").onchange=(e)=>{$("pw").type=e.target.checked?"text":"password";};
+$("btnOut").onclick = async ()=>{ await sb.auth.signOut(); location.reload(); };
+
+async function loadAll(){
+  const [c,l] = await Promise.all([
+    sb.from("categories").select("*").order("sort").order("id"),
+    sb.from("links").select("*").order("created_at",{ascending:false}).limit(1000)
+  ]);
+  if(c.error||l.error) return toast("불러오기 실패: "+(c.error||l.error).message);
+  cats=c.data; links=l.data; render();
+}
+
+function chip(label,on,fn,x){
+  const e=document.createElement("span"); e.className="chip"+(on?" on":""); e.textContent=label;
+  e.onclick=fn; return e;
+}
+
+function render(){
+  const pc=$("pickCats"); pc.innerHTML="";
+  cats.forEach(c=>pc.append(chip(c.name,pick.has(c.name),()=>{pick.has(c.name)?pick.delete(c.name):pick.add(c.name);render();})));
+
+  const fc=$("filterCats"); fc.innerHTML="";
+  fc.append(chip("전체",filterCat===null,()=>{filterCat=null;render();}));
+  cats.forEach(c=>{
+    const n=links.filter(l=>l.categories.includes(c.name)).length;
+    fc.append(chip(`${c.name} ${n}`,filterCat===c.name,()=>{filterCat=c.name;render();}));
+  });
+  fc.append(chip("미분류 "+links.filter(l=>!l.categories.length).length,filterCat==="__none",()=>{filterCat="__none";render();}));
+
+  const sf=$("statusFilter"); sf.innerHTML="";
+  [["all","전체"],["new","대기"],["working","작업 중"],["done","완료"]].forEach(([k,t])=>
+    sf.append(chip(t,filterStatus===k,()=>{filterStatus=k;render();})));
+
+  const mc=$("manageCats"); mc.innerHTML="";
+  cats.forEach(c=>{const e=chip(c.name+" ✕",false,()=>delCat(c)); mc.append(e);});
+
+  const q=$("q").value.trim().toLowerCase();
+  const rows=links.filter(l=>
+    (filterCat===null || (filterCat==="__none"?!l.categories.length:l.categories.includes(filterCat))) &&
+    (filterStatus==="all"||l.status===filterStatus) &&
+    (!q || (l.url+" "+l.memo+" "+l.title).toLowerCase().includes(q)));
+  const list=$("list");
+  if(!rows.length){list.innerHTML='<div class="sub" style="padding:12px 0">저장된 링크가 없어요.</div>';return;}
+  list.innerHTML=rows.map(l=>`
+    <div class="item" data-id="${l.id}">
+      <div class="row"><span class="tag">${PLAT[l.platform]||"기타"}</span>
+        <span class="tag st-${l.status}">${{new:"대기",working:"작업 중",done:"완료"}[l.status]||l.status}</span>
+        ${l.categories.map(c=>`<span class="tag">${esc(c)}</span>`).join("")}</div>
+      <div style="margin:6px 0"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></div>
+      ${l.memo?`<div class="sub">${esc(l.memo)}</div>`:""}
+      <div class="row" style="margin-top:6px">
+        <button data-a="st">상태 변경</button><button data-a="cat">분류 수정</button><button data-a="del">삭제</button>
+        <span class="sub">${new Date(l.created_at).toLocaleDateString("ko-KR")}</span></div>
+    </div>`).join("");
+}
+
+$("list").onclick = async (e)=>{
+  const b=e.target.closest("button[data-a]"); if(!b) return;
+  const id=b.closest(".item").dataset.id, l=links.find(x=>x.id===id);
+  if(b.dataset.a==="st"){
+    const nx={new:"working",working:"done",done:"new"}[l.status]||"new";
+    const {error}=await sb.from("links").update({status:nx,updated_at:new Date().toISOString()}).eq("id",id);
+    if(error) return toast(error.message); l.status=nx; render();
+  } else if(b.dataset.a==="del"){
+    if(!confirm("이 링크를 삭제할까요?")) return;
+    const {error}=await sb.from("links").delete().eq("id",id);
+    if(error) return toast(error.message); links=links.filter(x=>x.id!==id); render();
+  } else if(b.dataset.a==="cat"){
+    const v=prompt("카테고리를 쉼표로 구분해 입력 (예: 날먹, 인물형)\n사용 중: "+cats.map(c=>c.name).join(", "), l.categories.join(", "));
+    if(v===null) return;
+    const arr=[...new Set(v.split(",").map(s=>s.trim()).filter(Boolean))];
+    const {error}=await sb.from("links").update({categories:arr,updated_at:new Date().toISOString()}).eq("id",id);
+    if(error) return toast(error.message); l.categories=arr; render();
+  }
+};
+
+function updateFound(){const n=extractUrls($("inp").value).length;$("found").textContent=n?`링크 ${n}개 인식`:"";}
+$("inp").oninput=updateFound;
+$("q").oninput=render;
+$("btnPaste").onclick=async()=>{
+  try{ $("inp").value=await navigator.clipboard.readText(); updateFound(); }
+  catch{ toast("붙여넣기 권한이 없어요. 입력칸을 길게 눌러 붙여넣어 주세요."); }
+};
+
+$("btnSave").onclick=async()=>{
+  const urls=extractUrls($("inp").value);
+  if(!urls.length) return toast("링크를 찾지 못했어요.");
+  const memo=$("memo").value.trim(), cs=[...pick];
+  const rows=urls.map(u=>({url:u,platform:platformOf(u),memo,categories:cs}));
+  const {data,error}=await sb.from("links").upsert(rows,{onConflict:"url",ignoreDuplicates:true}).select();
+  if(error) return toast("저장 실패: "+error.message);
+  const added=data.length, dup=urls.length-added;
+  toast(`${added}개 저장`+(dup?`, 이미 있던 ${dup}개는 건너뜀`:""));
+  $("inp").value=""; $("memo").value=""; updateFound(); await loadAll();
+};
+
+$("btnAddCat").onclick=async()=>{
+  const name=$("newCat").value.trim(); if(!name) return;
+  const {error}=await sb.from("categories").insert({name,sort:cats.length+1});
+  if(error) return toast(error.message.includes("duplicate")?"이미 있는 이름이에요.":error.message);
+  $("newCat").value=""; await loadAll();
+};
+async function delCat(c){
+  if(!confirm(`'${c.name}' 카테고리를 삭제할까요?`)) return;
+  const {error}=await sb.from("categories").delete().eq("id",c.id);
+  if(error) return toast(error.message); pick.delete(c.name); await loadAll();
+}
+
+init();
+</script>
+</body>
+</html>
