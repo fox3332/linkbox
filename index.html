@@ -15,30 +15,57 @@
 @media (prefers-color-scheme: light){:root{--bg:#f4f6fa;--card:#fff;--line:#dde2ec;--tx:#1a2030;--sub:#6a7388;--ac:#1d7fd6;--ok:#1f9a5a;--warn:#c27a10;--bad:#d03a3a}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Noto Sans KR",sans-serif;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
-.wrap{max-width:640px;margin:0 auto;padding:14px 0 60px}
+.wrap{max-width:680px;margin:0 auto;padding:14px 0 70px}
 h1{font-size:19px;margin:6px 0 14px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
 textarea,input[type=text],input[type=email],input[type=password]{width:100%;background:transparent;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
 textarea{min-height:70px;resize:vertical}
 button{font:inherit;border:1px solid var(--line);background:transparent;color:var(--tx);border-radius:10px;padding:8px 12px;cursor:pointer}
 button.pri{background:var(--ac);border-color:var(--ac);color:#06121f;font-weight:700}
+button.bad{color:var(--bad)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grow{flex:1;min-width:0}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
 .chip{padding:5px 11px;border-radius:99px;border:1px solid var(--line);color:var(--sub);font-size:13px;cursor:pointer;user-select:none}
 .chip.on{background:var(--ac);border-color:var(--ac);color:#06121f;font-weight:600}
 .sub{color:var(--sub);font-size:13px}
-.item{border-top:1px solid var(--line);padding:12px 0}
-.item:first-child{border-top:0}
-.item a{color:var(--ac);word-break:break-all;text-decoration:none}
-.tag{font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--sub)}
-.st-new{color:var(--warn)}.st-working{color:var(--ac)}.st-done{color:var(--ok)}
-#msg{position:fixed;left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:608px;margin:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:none;z-index:9}
 .hide{display:none!important}
+#msg{position:fixed;left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom));max-width:648px;margin:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:none;z-index:30}
+
+/* 폴더 격자 */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.folder{border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;background:var(--bg)}
+.folder:active{opacity:.7}
+.folder .fi{font-size:26px}
+.folder .fn{font-weight:700;margin-top:2px;word-break:break-all}
+.folder .fc{color:var(--sub);font-size:12px}
+.folder .fp{margin-top:6px;font-size:12px;color:var(--sub)}
+.folder.dashed{border-style:dashed;display:flex;align-items:center;justify-content:center;color:var(--sub);min-height:92px}
+
+/* 목록 */
+.item{display:flex;gap:12px;border-top:1px solid var(--line);padding:12px 0}
+.item:first-child{border-top:0}
+.thumb{flex:0 0 96px;height:96px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;background:#333;position:relative}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .play{position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;padding:1px 6px;border-radius:6px}
+.p-youtube{background:#c4302b}.p-tiktok{background:#111;box-shadow:inset 3px 0 #25f4ee,inset -3px 0 #fe2c55}.p-xhs{background:#ff2442}.p-etc{background:#556}
+.body{flex:1;min-width:0}
+.item a.u{color:var(--ac);text-decoration:none;word-break:break-all;display:block;margin:4px 0}
+.tag{font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--sub);white-space:nowrap}
+.badge{font-size:11px;padding:2px 8px;border-radius:6px;color:#fff;font-weight:600;white-space:nowrap}
+.st-new{color:var(--warn)}.st-working{color:var(--ac)}.st-done{color:var(--ok)}
+.item .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.item .acts button{padding:4px 9px;font-size:13px}
+.embed{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;margin-top:8px;background:#000}
+
+/* 모달 */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+#modal .box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;width:100%;max-width:420px;max-height:80vh;overflow:auto}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🔗 링크 보관함</h1>
+  <h1 id="title">🔗 링크 보관함</h1>
 
   <div id="setup" class="card hide">
     <b>설정이 비어 있어요</b>
@@ -55,7 +82,8 @@ button.pri{background:var(--ac);border-color:var(--ac);color:#06121f;font-weight
     </div>
   </div>
 
-  <div id="main" class="hide">
+  <!-- 홈: 저장 + 폴더 -->
+  <div id="home" class="hide">
     <div class="card">
       <textarea id="inp" placeholder="링크(또는 공유 문구 통째로)를 붙여넣으세요. 여러 개도 돼요."></textarea>
       <div class="row" style="margin-top:8px">
@@ -65,34 +93,46 @@ button.pri{background:var(--ac);border-color:var(--ac);color:#06121f;font-weight
       <div class="sub" style="margin-top:10px">카테고리 (여러 개 선택 가능)</div>
       <div class="chips" id="pickCats"></div>
       <input id="memo" type="text" placeholder="메모 (선택)">
-      <div class="row" style="margin-top:10px">
-        <button class="pri" id="btnSave">저장</button>
-      </div>
+      <div class="row" style="margin-top:10px"><button class="pri" id="btnSave">저장</button></div>
     </div>
 
+    <div class="card">
+      <div class="row" style="margin-bottom:10px">
+        <input id="q" type="text" class="grow" placeholder="전체 검색 (링크·메모)">
+      </div>
+      <div class="grid" id="folders"></div>
+    </div>
+
+    <div class="row">
+      <button id="btnExportAll">📊 전체 엑셀로 내보내기</button>
+      <button id="btnOut" class="sub">로그아웃</button>
+    </div>
+  </div>
+
+  <!-- 폴더 -->
+  <div id="folder" class="hide">
+    <div class="row" style="margin-bottom:10px">
+      <button id="btnBack">← 폴더</button>
+      <span class="grow"></span>
+      <button id="btnExport">📊 엑셀</button>
+      <button id="btnDelFolder" class="bad">폴더 삭제</button>
+    </div>
     <div class="card">
       <div class="row">
-        <input id="q" type="text" placeholder="검색 (링크·메모)" style="flex:1">
+        <input id="addUrl" type="text" class="grow" placeholder="이 폴더에 링크 추가 (붙여넣기)">
+        <button class="pri" id="btnAdd">추가</button>
       </div>
-      <div class="chips" id="filterCats"></div>
-      <div class="row sub" id="statusFilter"></div>
+    </div>
+    <div class="card">
+      <input id="fq" type="text" placeholder="이 폴더에서 검색">
+      <div class="chips" id="platFilter"></div>
+      <div class="row" id="statusFilter"></div>
       <div id="list" style="margin-top:6px"></div>
     </div>
-
-    <div class="card">
-      <b>카테고리 관리</b>
-      <div class="row" style="margin-top:8px">
-        <input id="newCat" type="text" placeholder="새 카테고리 이름" style="flex:1">
-        <button id="btnAddCat">추가</button>
-      </div>
-      <div class="chips" id="manageCats"></div>
-      <div class="sub">칩을 길게 누르면(또는 ✕) 삭제돼요. 이미 저장된 링크의 분류는 그대로 남아요.</div>
-    </div>
-
-    <div class="row"><button id="btnOut" class="sub">로그아웃</button></div>
   </div>
 </div>
 <div id="msg"></div>
+<div id="modal" class="hide"><div class="box" id="modalBox"></div></div>
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -102,15 +142,24 @@ const cfg = window.LINKBOX_CONFIG || {};
 // 공유로 들어온 값은 페이지가 뜨자마자 먼저 붙잡아 둔다(로그인 화면을 거쳐도 잃지 않게).
 const SHARE = (()=>{
   const p = new URLSearchParams(location.search);
-  const v = [p.get("title"),p.get("text"),p.get("url")].filter(Boolean).join("
-");
+  const v = [p.get("title"),p.get("text"),p.get("url")].filter(Boolean).join("\n");
   if(v){ try{ localStorage.setItem("pendingShare", v); }catch{} }
   return v;
 })();
 let sb, cats = [], links = [];
-let pick = new Set(), filterCat = null, filterStatus = "all";
+let pick = new Set(), fStatus = "all", fPlat = "all";
+let authed = false;
 
-function toast(t){const m=$("msg");m.textContent=t;m.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>m.style.display="none",2600);}
+const PLAT = {
+  youtube:{name:"유튜브", icon:"▶"},
+  tiktok:{name:"틱톡", icon:"♪"},
+  xhs:{name:"샤오홍슈", icon:"📕"},
+  etc:{name:"기타", icon:"🔗"}
+};
+const BADGE_BG = {youtube:"#c4302b", tiktok:"#111", xhs:"#ff2442", etc:"#667"};
+const STATUS = {new:"대기", working:"작업 중", done:"완료"};
+
+function toast(t){const m=$("msg");m.textContent=t;m.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>m.style.display="none",3000);}
 const esc = (s)=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function platformOf(u){
@@ -120,14 +169,37 @@ function platformOf(u){
   if(/(^|\.)(youtube\.com|youtu\.be)$/.test(h)) return "youtube";
   return "etc";
 }
-const PLAT = {tiktok:"틱톡",xhs:"샤오홍슈",youtube:"유튜브",etc:"기타"};
-
+function youtubeId(u){
+  try{
+    const x=new URL(u), h=x.hostname.replace(/^www\.|^m\./,"");
+    if(h==="youtu.be") return x.pathname.slice(1).split("/")[0]||null;
+    if(h.endsWith("youtube.com")){
+      if(x.searchParams.get("v")) return x.searchParams.get("v");
+      const m=x.pathname.match(/^\/(shorts|embed|live)\/([\w-]{6,})/); if(m) return m[2];
+    }
+  }catch{}
+  return null;
+}
 function extractUrls(text){
   const m = (text||"").match(/https?:\/\/[^\s<>"'，。！）)\]]+/g) || [];
   const out=[]; for(let u of m){ u=u.replace(/[.,;!?，。]+$/,""); if(!out.includes(u)) out.push(u); }
   return out;
 }
+function shortUrl(u){ try{const x=new URL(u);return x.hostname.replace(/^www\./,"")+x.pathname.replace(/\/$/,"")+(x.search?"…":"");}catch{return u;} }
 
+/* ---------- 라우팅: #f=이름 | #all | #none | (홈) ---------- */
+function route(){
+  const h = decodeURIComponent(location.hash.slice(1));
+  if(h.startsWith("f=")) return {t:"cat", name:h.slice(2)};
+  if(h==="all") return {t:"all"};
+  if(h==="none") return {t:"none"};
+  return {t:"home"};
+}
+function go(h){ if(!h){ history.pushState(null,"",location.pathname); render(); } else { location.hash = encodeURIComponent(h); } }
+window.addEventListener("hashchange", ()=>{ fStatus="all"; fPlat="all"; render(); });
+window.addEventListener("popstate", render);
+
+/* ---------- 초기화 / 로그인 ---------- */
 async function init(){
   if(!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY){ $("setup").classList.remove("hide"); return; }
   sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
@@ -135,13 +207,14 @@ async function init(){
   const {data} = await sb.auth.getSession();
   if(data.session) await enter(); else $("login").classList.remove("hide");
 }
-
 async function enter(){
-  $("login").classList.add("hide"); $("main").classList.remove("hide");
-  // 공유 버튼으로 들어온 경우(안드로이드)
+  authed = true;
+  $("login").classList.add("hide");
   let shared = SHARE;
   if(!shared){ try{ shared = localStorage.getItem("pendingShare") || ""; }catch{} }
   if(shared){
+    // 공유로 들어오면 항상 홈(저장 화면)으로
+    if(location.hash) history.replaceState(null,"",location.pathname);
     $("inp").value = shared;
     try{ localStorage.removeItem("pendingShare"); }catch{}
     if(location.search) history.replaceState(null,"",location.pathname);
@@ -153,7 +226,6 @@ async function enter(){
   }
   await loadAll();
 }
-
 $("btnLogin").onclick = async ()=>{
   const {error} = await sb.auth.signInWithPassword({email:$("em").value.trim().toLowerCase(),password:$("pw").value.trim()});
   if(error) return toast("로그인 실패: "+error.message);
@@ -165,107 +237,247 @@ $("btnOut").onclick = async ()=>{ await sb.auth.signOut(); location.reload(); };
 async function loadAll(){
   const [c,l] = await Promise.all([
     sb.from("categories").select("*").order("sort").order("id"),
-    sb.from("links").select("*").order("created_at",{ascending:false}).limit(1000)
+    sb.from("links").select("*").order("created_at",{ascending:false}).limit(2000)
   ]);
   if(c.error||l.error) return toast("불러오기 실패: "+(c.error||l.error).message);
   cats=c.data; links=l.data; render();
 }
 
-function chip(label,on,fn,x){
-  const e=document.createElement("span"); e.className="chip"+(on?" on":""); e.textContent=label;
-  e.onclick=fn; return e;
+/* ---------- 렌더 ---------- */
+function chip(label,on,fn){
+  const e=document.createElement("span"); e.className="chip"+(on?" on":""); e.textContent=label; e.onclick=fn; return e;
+}
+function render(){
+  if(!authed) return;
+  const r = route();
+  $("home").classList.toggle("hide", r.t!=="home");
+  $("folder").classList.toggle("hide", r.t==="home");
+  if(r.t==="home") renderHome(); else renderFolder(r);
 }
 
-function render(){
+function platMarks(list){
+  const c={}; list.forEach(l=>c[l.platform]=(c[l.platform]||0)+1);
+  return Object.keys(PLAT).filter(k=>c[k]).map(k=>`${PLAT[k].icon}${c[k]}`).join(" ");
+}
+
+function renderHome(){
+  $("title").textContent = "🔗 링크 보관함";
+  // 저장용 카테고리 칩
   const pc=$("pickCats"); pc.innerHTML="";
-  cats.forEach(c=>pc.append(chip(c.name,pick.has(c.name),()=>{pick.has(c.name)?pick.delete(c.name):pick.add(c.name);render();})));
+  cats.forEach(c=>pc.append(chip(c.name,pick.has(c.name),()=>{pick.has(c.name)?pick.delete(c.name):pick.add(c.name);renderHome();})));
+  pc.append(chip("＋ 새 카테고리",false,addCategory));
 
-  const fc=$("filterCats"); fc.innerHTML="";
-  fc.append(chip("전체",filterCat===null,()=>{filterCat=null;render();}));
-  cats.forEach(c=>{
-    const n=links.filter(l=>l.categories.includes(c.name)).length;
-    fc.append(chip(`${c.name} ${n}`,filterCat===c.name,()=>{filterCat=c.name;render();}));
+  // 폴더 격자
+  const g=$("folders"); g.innerHTML="";
+  const q=$("q").value.trim().toLowerCase();
+  if(q){
+    const rows=links.filter(l=>(l.url+" "+l.memo+" "+l.title).toLowerCase().includes(q));
+    g.innerHTML = `<div class="sub" style="grid-column:1/-1">'${esc(q)}' 검색 결과 ${rows.length}개 — 아래 폴더를 눌러 열면 그 안에서 볼 수 있어요.</div>`;
+  }
+  const mk=(icon,name,list,h)=>{
+    const d=document.createElement("div"); d.className="folder";
+    d.innerHTML=`<div class="fi">${icon}</div><div class="fn">${esc(name)}</div><div class="fc">${list.length}개</div><div class="fp">${platMarks(list)||"&nbsp;"}</div>`;
+    d.onclick=()=>go(h); g.append(d);
+  };
+  mk("🗂️","전체",links,"all");
+  cats.forEach(c=>mk("📁",c.name,links.filter(l=>l.categories.includes(c.name)),"f="+c.name));
+  const none=links.filter(l=>!l.categories.length);
+  if(none.length) mk("📄","미분류",none,"none");
+  const add=document.createElement("div"); add.className="folder dashed"; add.textContent="＋ 새 폴더"; add.onclick=addCategory; g.append(add);
+}
+
+function folderRows(r){
+  let rows = links;
+  if(r.t==="cat") rows = links.filter(l=>l.categories.includes(r.name));
+  else if(r.t==="none") rows = links.filter(l=>!l.categories.length);
+  return rows;
+}
+function folderLabel(r){ return r.t==="cat" ? r.name : r.t==="none" ? "미분류" : "전체"; }
+
+function renderFolder(r){
+  const base = folderRows(r);
+  $("title").textContent = (r.t==="all"?"🗂️ ":r.t==="none"?"📄 ":"📁 ")+folderLabel(r)+` (${base.length})`;
+  $("btnDelFolder").classList.toggle("hide", r.t!=="cat");
+  $("addUrl").placeholder = r.t==="cat" ? `'${r.name}' 폴더에 링크 추가 (붙여넣기)` : "링크 추가 (붙여넣기)";
+
+  const pf=$("platFilter"); pf.innerHTML="";
+  pf.append(chip("전체 "+base.length,fPlat==="all",()=>{fPlat="all";render();}));
+  Object.keys(PLAT).forEach(k=>{
+    const n=base.filter(l=>l.platform===k).length;
+    if(n) pf.append(chip(`${PLAT[k].icon} ${PLAT[k].name} ${n}`,fPlat===k,()=>{fPlat=k;render();}));
   });
-  fc.append(chip("미분류 "+links.filter(l=>!l.categories.length).length,filterCat==="__none",()=>{filterCat="__none";render();}));
-
   const sf=$("statusFilter"); sf.innerHTML="";
   [["all","전체"],["new","대기"],["working","작업 중"],["done","완료"]].forEach(([k,t])=>
-    sf.append(chip(t,filterStatus===k,()=>{filterStatus=k;render();})));
+    sf.append(chip(t,fStatus===k,()=>{fStatus=k;render();})));
 
-  const mc=$("manageCats"); mc.innerHTML="";
-  cats.forEach(c=>{const e=chip(c.name+" ✕",false,()=>delCat(c)); mc.append(e);});
-
-  const q=$("q").value.trim().toLowerCase();
-  const rows=links.filter(l=>
-    (filterCat===null || (filterCat==="__none"?!l.categories.length:l.categories.includes(filterCat))) &&
-    (filterStatus==="all"||l.status===filterStatus) &&
+  const q=$("fq").value.trim().toLowerCase();
+  const rows=base.filter(l=>
+    (fPlat==="all"||l.platform===fPlat) && (fStatus==="all"||l.status===fStatus) &&
     (!q || (l.url+" "+l.memo+" "+l.title).toLowerCase().includes(q)));
   const list=$("list");
-  if(!rows.length){list.innerHTML='<div class="sub" style="padding:12px 0">저장된 링크가 없어요.</div>';return;}
-  list.innerHTML=rows.map(l=>`
-    <div class="item" data-id="${l.id}">
-      <div class="row"><span class="tag">${PLAT[l.platform]||"기타"}</span>
-        <span class="tag st-${l.status}">${{new:"대기",working:"작업 중",done:"완료"}[l.status]||l.status}</span>
-        ${l.categories.map(c=>`<span class="tag">${esc(c)}</span>`).join("")}</div>
-      <div style="margin:6px 0"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url)}</a></div>
-      ${l.memo?`<div class="sub">${esc(l.memo)}</div>`:""}
-      <div class="row" style="margin-top:6px">
-        <button data-a="st">상태 변경</button><button data-a="cat">분류 수정</button><button data-a="del">삭제</button>
-        <span class="sub">${new Date(l.created_at).toLocaleDateString("ko-KR")}</span></div>
-    </div>`).join("");
+  if(!rows.length){list.innerHTML='<div class="sub" style="padding:12px 0">이 폴더에 저장된 링크가 없어요.</div>';return;}
+  list.innerHTML=rows.map(itemHtml).join("");
 }
 
+function itemHtml(l){
+  const yt = l.platform==="youtube" ? youtubeId(l.url) : null;
+  const P = PLAT[l.platform]||PLAT.etc;
+  const thumb = yt
+    ? `<img src="https://img.youtube.com/vi/${esc(yt)}/mqdefault.jpg" alt="" loading="lazy"><span class="play">▶</span>`
+    : `<span>${P.icon}</span>`;
+  return `
+  <div class="item" data-id="${l.id}">
+    <a class="thumb p-${l.platform}" href="${esc(l.url)}" target="_blank" rel="noopener">${thumb}</a>
+    <div class="body">
+      <div class="row">
+        <span class="badge" style="background:${BADGE_BG[l.platform]||"#667"}">${P.icon} ${P.name}</span>
+        <span class="tag st-${l.status}">${STATUS[l.status]||l.status}</span>
+        ${l.categories.map(c=>`<span class="tag">${esc(c)}</span>`).join("")}
+      </div>
+      <a class="u" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title||shortUrl(l.url))}</a>
+      ${l.memo?`<div class="sub">${esc(l.memo)}</div>`:""}
+      <div class="sub">${new Date(l.created_at).toLocaleDateString("ko-KR")}</div>
+      <div class="acts">
+        ${yt?`<button data-a="play">▶ 재생</button>`:""}
+        <button data-a="st">상태</button><button data-a="cat">폴더 이동</button><button data-a="memo">메모</button><button data-a="del" class="bad">삭제</button>
+      </div>
+      <div class="embedbox"></div>
+    </div>
+  </div>`;
+}
+
+/* ---------- 목록 동작 ---------- */
 $("list").onclick = async (e)=>{
   const b=e.target.closest("button[data-a]"); if(!b) return;
-  const id=b.closest(".item").dataset.id, l=links.find(x=>x.id===id);
-  if(b.dataset.a==="st"){
+  const it=b.closest(".item"), id=it.dataset.id, l=links.find(x=>x.id===id);
+  const a=b.dataset.a;
+  if(a==="play"){
+    const box=it.querySelector(".embedbox");
+    box.innerHTML = box.innerHTML ? "" : `<iframe class="embed" src="https://www.youtube-nocookie.com/embed/${esc(youtubeId(l.url))}?playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+  } else if(a==="st"){
     const nx={new:"working",working:"done",done:"new"}[l.status]||"new";
-    const {error}=await sb.from("links").update({status:nx,updated_at:new Date().toISOString()}).eq("id",id);
-    if(error) return toast(error.message); l.status=nx; render();
-  } else if(b.dataset.a==="del"){
-    if(!confirm("이 링크를 삭제할까요?")) return;
+    await patch(l,{status:nx});
+  } else if(a==="del"){
+    if(!confirm("이 링크를 삭제할까요?\n(다른 폴더에 있어도 함께 사라져요)")) return;
     const {error}=await sb.from("links").delete().eq("id",id);
-    if(error) return toast(error.message); links=links.filter(x=>x.id!==id); render();
-  } else if(b.dataset.a==="cat"){
-    const v=prompt("카테고리를 쉼표로 구분해 입력 (예: 날먹, 인물형)\n사용 중: "+cats.map(c=>c.name).join(", "), l.categories.join(", "));
-    if(v===null) return;
-    const arr=[...new Set(v.split(",").map(s=>s.trim()).filter(Boolean))];
-    const {error}=await sb.from("links").update({categories:arr,updated_at:new Date().toISOString()}).eq("id",id);
-    if(error) return toast(error.message); l.categories=arr; render();
+    if(error) return toast(error.message); links=links.filter(x=>x.id!==id); render(); toast("삭제했어요.");
+  } else if(a==="cat"){
+    openCatModal(l);
+  } else if(a==="memo"){
+    const v=prompt("메모", l.memo||""); if(v===null) return;
+    await patch(l,{memo:v.trim()});
   }
 };
+async function patch(l,fields){
+  const {error}=await sb.from("links").update({...fields,updated_at:new Date().toISOString()}).eq("id",l.id);
+  if(error) return toast(error.message);
+  Object.assign(l,fields); render();
+}
 
+/* 폴더(카테고리) 이동 모달 */
+function openCatModal(l){
+  const sel=new Set(l.categories);
+  const box=$("modalBox");
+  const draw=()=>{
+    box.innerHTML=`<b>폴더 이동 / 분류</b><div class="sub" style="margin-top:4px">여러 폴더에 동시에 넣을 수 있어요.</div><div class="chips" id="mc"></div>
+      <div class="row" style="justify-content:flex-end"><button id="mCancel">취소</button><button class="pri" id="mOk">저장</button></div>`;
+    const mc=box.querySelector("#mc");
+    cats.forEach(c=>mc.append(chip(c.name,sel.has(c.name),()=>{sel.has(c.name)?sel.delete(c.name):sel.add(c.name);draw();})));
+    box.querySelector("#mCancel").onclick=()=>$("modal").classList.add("hide");
+    box.querySelector("#mOk").onclick=async()=>{ $("modal").classList.add("hide"); await patch(l,{categories:[...sel]}); };
+  };
+  draw(); $("modal").classList.remove("hide");
+}
+$("modal").onclick=(e)=>{ if(e.target.id==="modal") $("modal").classList.add("hide"); };
+
+/* ---------- 저장 (홈) ---------- */
 function updateFound(){const n=extractUrls($("inp").value).length;$("found").textContent=n?`링크 ${n}개 인식`:"";}
 $("inp").oninput=updateFound;
-$("q").oninput=render;
+$("q").oninput=renderHome;
+$("fq").oninput=render;
 $("btnPaste").onclick=async()=>{
   try{ $("inp").value=await navigator.clipboard.readText(); updateFound(); }
   catch{ toast("붙여넣기 권한이 없어요. 입력칸을 길게 눌러 붙여넣어 주세요."); }
 };
-
+async function saveUrls(urls, categories, memo){
+  const rows=urls.map(u=>({url:u,platform:platformOf(u),memo:memo||"",categories}));
+  // 이미 있는 링크는 카테고리를 합쳐 준다
+  const have = links.filter(l=>urls.includes(l.url));
+  const fresh = rows.filter(r=>!have.some(h=>h.url===r.url));
+  let added=0, merged=0;
+  if(fresh.length){
+    const {data,error}=await sb.from("links").insert(fresh).select();
+    if(error) { toast("저장 실패: "+error.message); return false; }
+    added=data.length;
+  }
+  for(const h of have){
+    const merge=[...new Set([...h.categories,...categories])];
+    if(merge.length!==h.categories.length){
+      const {error}=await sb.from("links").update({categories:merge,updated_at:new Date().toISOString()}).eq("id",h.id);
+      if(!error) merged++;
+    }
+  }
+  const dup=urls.length-added;
+  toast(`${added}개 저장`+(dup?`, 이미 있던 ${dup}개`+(merged?` (폴더만 추가 ${merged})`:" 건너뜀"):""));
+  await loadAll(); return true;
+}
 $("btnSave").onclick=async()=>{
   const urls=extractUrls($("inp").value);
   if(!urls.length) return toast("링크를 찾지 못했어요.");
-  const memo=$("memo").value.trim(), cs=[...pick];
-  const rows=urls.map(u=>({url:u,platform:platformOf(u),memo,categories:cs}));
-  const {data,error}=await sb.from("links").upsert(rows,{onConflict:"url",ignoreDuplicates:true}).select();
-  if(error) return toast("저장 실패: "+error.message);
-  const added=data.length, dup=urls.length-added;
-  toast(`${added}개 저장`+(dup?`, 이미 있던 ${dup}개는 건너뜀`:""));
-  $("inp").value=""; $("memo").value=""; updateFound(); await loadAll();
+  if(await saveUrls(urls,[...pick],$("memo").value.trim())){ $("inp").value=""; $("memo").value=""; updateFound(); }
 };
 
-$("btnAddCat").onclick=async()=>{
-  const name=$("newCat").value.trim(); if(!name) return;
+/* ---------- 폴더 화면에서 추가 ---------- */
+$("btnAdd").onclick=async()=>{
+  const urls=extractUrls($("addUrl").value);
+  if(!urls.length) return toast("링크를 찾지 못했어요.");
+  const r=route(); const cs = r.t==="cat" ? [r.name] : [];
+  if(await saveUrls(urls,cs,"")) $("addUrl").value="";
+};
+$("btnBack").onclick=()=>go("");
+$("btnDelFolder").onclick=async()=>{
+  const r=route(); const c=cats.find(x=>x.name===r.name); if(!c) return;
+  if(!confirm(`'${c.name}' 폴더를 삭제할까요?\n안에 있던 링크는 삭제되지 않아요. (다른 폴더가 없으면 '미분류'가 돼요)`)) return;
+  const {error}=await sb.from("categories").delete().eq("id",c.id);
+  if(error) return toast(error.message);
+  // 링크에 붙은 이 이름도 지운다
+  const affected=links.filter(l=>l.categories.includes(c.name));
+  for(const l of affected){ await sb.from("links").update({categories:l.categories.filter(x=>x!==c.name)}).eq("id",l.id); }
+  toast("폴더를 삭제했어요."); go(""); await loadAll();
+};
+
+/* ---------- 카테고리 추가 ---------- */
+async function addCategory(){
+  const name=(prompt("새 카테고리(폴더) 이름")||"").trim(); if(!name) return;
   const {error}=await sb.from("categories").insert({name,sort:cats.length+1});
   if(error) return toast(error.message.includes("duplicate")?"이미 있는 이름이에요.":error.message);
-  $("newCat").value=""; await loadAll();
-};
-async function delCat(c){
-  if(!confirm(`'${c.name}' 카테고리를 삭제할까요?`)) return;
-  const {error}=await sb.from("categories").delete().eq("id",c.id);
-  if(error) return toast(error.message); pick.delete(c.name); await loadAll();
+  pick.add(name); await loadAll(); toast(`'${name}' 폴더를 만들었어요.`);
 }
+
+/* ---------- 엑셀(CSV) 내보내기 ---------- */
+function csvCell(v){ v=String(v??""); return /[",\r\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+async function exportRows(rows,label){
+  if(!rows.length) return toast("내보낼 링크가 없어요.");
+  const head=["카테고리","플랫폼","링크","제목","메모","상태","저장일"];
+  const lines=[head.map(csvCell).join(",")];
+  rows.forEach(l=>lines.push([
+    l.categories.join(" / ")||"미분류",(PLAT[l.platform]||PLAT.etc).name,l.url,l.title,l.memo,STATUS[l.status]||l.status,
+    new Date(l.created_at).toLocaleString("ko-KR")].map(csvCell).join(",")));
+  const text="﻿"+lines.join("\r\n");
+  const d=new Date(), ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  const name=`링크보관함_${label}_${ds}.csv`;
+  const file=new File([text],name,{type:"text/csv"});
+  try{
+    if(matchMedia("(pointer:coarse)").matches && navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:name}); return;   // 폰: 공유창에서 드라이브·카톡 등에 저장
+    }
+  }catch(e){ if(e&&e.name==="AbortError") return; }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(file); a.download=name;
+  document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast(`${rows.length}개를 ${name} 로 내보냈어요.`);
+}
+$("btnExport").onclick=()=>{ const r=route(); exportRows(folderRows(r),folderLabel(r)); };
+$("btnExportAll").onclick=()=>exportRows(links,"전체");
 
 init();
 </script>
