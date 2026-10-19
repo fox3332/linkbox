@@ -99,6 +99,14 @@ button.pri{background:var(--ac);border-color:var(--ac);color:#06121f;font-weight
 <script>
 const $ = (id) => document.getElementById(id);
 const cfg = window.LINKBOX_CONFIG || {};
+// 공유로 들어온 값은 페이지가 뜨자마자 먼저 붙잡아 둔다(로그인 화면을 거쳐도 잃지 않게).
+const SHARE = (()=>{
+  const p = new URLSearchParams(location.search);
+  const v = [p.get("title"),p.get("text"),p.get("url")].filter(Boolean).join("
+");
+  if(v){ try{ localStorage.setItem("pendingShare", v); }catch{} }
+  return v;
+})();
 let sb, cats = [], links = [];
 let pick = new Set(), filterCat = null, filterStatus = "all";
 
@@ -131,9 +139,18 @@ async function init(){
 async function enter(){
   $("login").classList.add("hide"); $("main").classList.remove("hide");
   // 공유 버튼으로 들어온 경우(안드로이드)
-  const p = new URLSearchParams(location.search);
-  const shared = [p.get("title"),p.get("text"),p.get("url")].filter(Boolean).join("\n");
-  if(shared){ $("inp").value = shared; history.replaceState(null,"",location.pathname); updateFound(); }
+  let shared = SHARE;
+  if(!shared){ try{ shared = localStorage.getItem("pendingShare") || ""; }catch{} }
+  if(shared){
+    $("inp").value = shared;
+    try{ localStorage.removeItem("pendingShare"); }catch{}
+    if(location.search) history.replaceState(null,"",location.pathname);
+    updateFound();
+    const n = extractUrls(shared).length;
+    toast(n ? `공유받은 링크 ${n}개를 채웠어요. 카테고리를 고르고 저장하세요.` : "공유받은 내용에 링크가 없어요.");
+  } else if(location.search){
+    $("found").textContent = "받은 값: " + decodeURIComponent(location.search).slice(0,160);
+  }
   await loadAll();
 }
 
