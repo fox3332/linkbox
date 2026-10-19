@@ -59,6 +59,15 @@ button.bad{color:var(--bad)}
 .embed.tt{aspect-ratio:9/16;max-width:340px;display:block}
 .embed{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;margin-top:8px;background:#000}
 
+/* 선택 */
+.ck{width:22px;height:22px;flex:0 0 auto;margin-top:2px;accent-color:var(--ac)}
+.item.sel{background:rgba(124,196,255,.10);border-radius:10px}
+#bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:15;display:none}
+#bar .in{max-width:680px;margin:0 auto}
+#bar button{padding:7px 10px;font-size:13px}
+body.hasbar .wrap{padding-bottom:150px}
+body.hasbar #msg{bottom:calc(120px + env(safe-area-inset-bottom))}
+
 /* 모달 */
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
 #modal .box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;width:100%;max-width:420px;max-height:80vh;overflow:auto}
@@ -128,10 +137,23 @@ button.bad{color:var(--bad)}
       <input id="fq" type="text" placeholder="이 폴더에서 검색">
       <div class="chips" id="platFilter"></div>
       <div class="row" id="statusFilter"></div>
+      <label class="row sub" style="margin-top:8px;cursor:pointer"><input type="checkbox" class="ck" id="selAll" style="margin:0"> 이 목록 전체 선택 <span id="selCnt"></span></label>
       <div id="list" style="margin-top:6px"></div>
     </div>
   </div>
 </div>
+<div id="bar"><div class="in">
+  <div class="sub" id="barInfo" style="margin-bottom:6px"></div>
+  <div class="row">
+    <button class="pri" id="bXls">📊 엑셀</button>
+    <button id="bShare">📤 링크 보내기</button>
+    <button id="bCopy">📋 복사</button>
+    <button id="bMove">📁 폴더</button>
+    <button id="bStatus">상태</button>
+    <button id="bDel" class="bad">삭제</button>
+    <button id="bClear">해제</button>
+  </div>
+</div></div>
 <div id="msg"></div>
 <div id="modal" class="hide"><div class="box" id="modalBox"></div></div>
 
@@ -150,6 +172,8 @@ const SHARE = (()=>{
 let sb, cats = [], links = [];
 let pick = new Set(), fStatus = "all", fPlat = "all";
 let authed = false;
+const sel = new Set();
+let curRows = [];
 
 const PLAT = {
   youtube:{name:"유튜브", icon:"▶"},
@@ -196,8 +220,8 @@ function route(){
   if(h==="none") return {t:"none"};
   return {t:"home"};
 }
-function go(h){ if(!h){ history.pushState(null,"",location.pathname); render(); } else { location.hash = encodeURIComponent(h); } }
-window.addEventListener("hashchange", ()=>{ fStatus="all"; fPlat="all"; render(); });
+function go(h){ sel.clear(); if(!h){ history.pushState(null,"",location.pathname); render(); } else { location.hash = encodeURIComponent(h); } }
+window.addEventListener("hashchange", ()=>{ fStatus="all"; fPlat="all"; sel.clear(); render(); });
 window.addEventListener("popstate", render);
 
 /* ---------- 초기화 / 로그인 ---------- */
@@ -315,9 +339,21 @@ function renderFolder(r){
   const rows=base.filter(l=>
     (fPlat==="all"||l.platform===fPlat) && (fStatus==="all"||l.status===fStatus) &&
     (!q || (l.url+" "+l.memo+" "+l.title).toLowerCase().includes(q)));
+  curRows = rows;
+  for(const id of [...sel]) if(!links.some(l=>l.id===id)) sel.delete(id);
   const list=$("list");
-  if(!rows.length){list.innerHTML='<div class="sub" style="padding:12px 0">이 폴더에 저장된 링크가 없어요.</div>';return;}
-  list.innerHTML=rows.map(itemHtml).join("");
+  if(!rows.length) list.innerHTML='<div class="sub" style="padding:12px 0">이 폴더에 저장된 링크가 없어요.</div>';
+  else list.innerHTML=rows.map(itemHtml).join("");
+  syncBar();
+}
+function syncBar(){
+  const n=sel.size, inView=curRows.filter(l=>sel.has(l.id)).length;
+  $("selAll").checked = curRows.length>0 && inView===curRows.length;
+  $("selAll").indeterminate = inView>0 && inView<curRows.length;
+  $("selCnt").textContent = n ? `(${n}개 선택됨)` : "";
+  $("bar").style.display = n ? "block" : "none";
+  document.body.classList.toggle("hasbar", n>0);
+  $("barInfo").textContent = `${n}개 선택됨`;
 }
 
 function itemHtml(l){
@@ -327,7 +363,8 @@ function itemHtml(l){
     ? `<img src="https://img.youtube.com/vi/${esc(yt)}/mqdefault.jpg" alt="" loading="lazy"><span class="play">▶</span>`
     : `<span>${P.icon}</span>`;
   return `
-  <div class="item" data-id="${l.id}">
+  <div class="item${sel.has(l.id)?" sel":""}" data-id="${l.id}">
+    <input type="checkbox" class="ck" ${sel.has(l.id)?"checked":""} aria-label="선택">
     <a class="thumb p-${l.platform}" href="${esc(l.url)}" target="_blank" rel="noopener">${thumb}</a>
     <div class="body">
       <div class="row">
@@ -397,6 +434,76 @@ async function patch(l,fields){
   if(error) return toast(error.message);
   Object.assign(l,fields); render();
 }
+
+$("list").onchange = (e)=>{
+  const c=e.target.closest(".ck"); if(!c) return;
+  const it=c.closest(".item"); const id=it.dataset.id;
+  c.checked ? sel.add(id) : sel.delete(id);
+  it.classList.toggle("sel", c.checked); syncBar();
+};
+$("selAll").onchange = (e)=>{
+  curRows.forEach(l=> e.target.checked ? sel.add(l.id) : sel.delete(l.id));
+  render();
+};
+const picked = ()=>links.filter(l=>sel.has(l.id));
+$("bClear").onclick = ()=>{ sel.clear(); render(); };
+$("bXls").onclick = ()=>{ const r=route(); exportRows(picked(), "선택_"+folderLabel(r)); };
+$("bCopy").onclick = async ()=>{
+  const t=picked().map(l=>l.url).join("\n");
+  try{ await navigator.clipboard.writeText(t); toast(`링크 ${picked().length}개를 복사했어요.`); }
+  catch{ prompt("복사해서 사용하세요", t); }
+};
+$("bShare").onclick = async ()=>{
+  const t=picked().map(l=>l.url).join("\n");
+  if(navigator.share){ try{ await navigator.share({text:t}); return; }catch(e){ if(e&&e.name==="AbortError") return; } }
+  try{ await navigator.clipboard.writeText(t); toast("공유창을 쓸 수 없어 링크를 복사했어요."); }catch{ prompt("복사해서 사용하세요", t); }
+};
+$("bDel").onclick = async ()=>{
+  const ids=[...sel]; if(!ids.length) return;
+  if(!confirm(`선택한 ${ids.length}개 링크를 삭제할까요?\n(다른 폴더에 있어도 함께 사라져요)`)) return;
+  const {error}=await sb.from("links").delete().in("id",ids);
+  if(error) return toast(error.message);
+  links=links.filter(l=>!sel.has(l.id)); sel.clear(); render(); toast(`${ids.length}개를 삭제했어요.`);
+};
+$("bStatus").onclick = ()=>{
+  const box=$("modalBox");
+  box.innerHTML=`<b>${sel.size}개의 상태를 바꿔요</b><div class="row" style="margin:12px 0"><button data-s="new">대기</button><button data-s="working">작업 중</button><button data-s="done">완료</button></div><div class="row" style="justify-content:flex-end"><button id="mCancel">취소</button></div>`;
+  box.onclick=async(e)=>{
+    const b=e.target.closest("button[data-s]"); if(!b) return;
+    $("modal").classList.add("hide");
+    const ids=[...sel], st=b.dataset.s;
+    const {error}=await sb.from("links").update({status:st,updated_at:new Date().toISOString()}).in("id",ids);
+    if(error) return toast(error.message);
+    links.forEach(l=>{ if(sel.has(l.id)) l.status=st; }); render(); toast(`${ids.length}개를 '${STATUS[st]}'로 바꿨어요.`);
+  };
+  box.querySelector("#mCancel").onclick=()=>$("modal").classList.add("hide");
+  $("modal").classList.remove("hide");
+};
+$("bMove").onclick = ()=>{
+  const pickSet=new Set(); const box=$("modalBox");
+  const draw=()=>{
+    box.onclick=null;
+    box.innerHTML=`<b>${sel.size}개를 폴더로 이동</b><div class="sub" style="margin-top:4px">'추가'는 지금 폴더를 유지한 채 더하고, '교체'는 선택한 폴더로 바꿔요.</div><div class="chips" id="mc"></div>
+      <div class="row" style="justify-content:flex-end"><button id="mCancel">취소</button><button id="mAdd">추가</button><button class="pri" id="mSet">교체</button></div>`;
+    const mc=box.querySelector("#mc");
+    cats.forEach(c=>mc.append(chip(c.name,pickSet.has(c.name),()=>{pickSet.has(c.name)?pickSet.delete(c.name):pickSet.add(c.name);draw();})));
+    box.querySelector("#mCancel").onclick=()=>$("modal").classList.add("hide");
+    const apply=async(mode)=>{
+      if(!pickSet.size) return toast("폴더를 하나 이상 고르세요.");
+      $("modal").classList.add("hide");
+      let n=0;
+      for(const l of picked()){
+        const next = mode==="add" ? [...new Set([...l.categories,...pickSet])] : [...pickSet];
+        const {error}=await sb.from("links").update({categories:next,updated_at:new Date().toISOString()}).eq("id",l.id);
+        if(!error){ l.categories=next; n++; }
+      }
+      sel.clear(); render(); toast(`${n}개를 이동했어요.`);
+    };
+    box.querySelector("#mAdd").onclick=()=>apply("add");
+    box.querySelector("#mSet").onclick=()=>apply("set");
+  };
+  draw(); $("modal").classList.remove("hide");
+};
 
 /* 폴더(카테고리) 이동 모달 */
 function openCatModal(l){
