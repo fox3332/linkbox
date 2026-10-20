@@ -135,6 +135,7 @@ body.hasbar #msg{bottom:calc(120px + env(safe-area-inset-bottom))}
     </div>
     <div class="card">
       <input id="fq" type="text" placeholder="이 폴더에서 검색">
+      <label class="sub" style="display:flex;gap:8px;align-items:center;margin-top:10px;cursor:pointer"><input type="checkbox" id="autoEmbed" class="ck" style="margin:0"> 영상 바로 보이기 (스크롤하면 불러와요)</label>
       <div class="chips" id="platFilter"></div>
       <div class="row" id="statusFilter"></div>
       <label class="row sub" style="margin-top:8px;cursor:pointer"><input type="checkbox" class="ck" id="selAll" style="margin:0"> 이 목록 전체 선택 <span id="selCnt"></span></label>
@@ -345,6 +346,7 @@ function renderFolder(r){
   if(!rows.length) list.innerHTML='<div class="sub" style="padding:12px 0">이 폴더에 저장된 링크가 없어요.</div>';
   else list.innerHTML=rows.map(itemHtml).join("");
   syncBar();
+  lazyMount();
 }
 function syncBar(){
   const n=sel.size, inView=curRows.filter(l=>sel.has(l.id)).length;
@@ -398,6 +400,37 @@ async function tiktokId(u){
   return null;
 }
 
+/* 영상 붙이기: 유튜브·틱톡을 항목 아래에 띄운다 */
+async function mountEmbed(box,l){
+  if(l.platform==="youtube"){
+    const id=youtubeId(l.url); if(!id) return;
+    box.innerHTML=`<iframe class="embed" src="https://www.youtube-nocookie.com/embed/${esc(id)}?playsinline=1" loading="lazy" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+  } else if(l.platform==="tiktok"){
+    box.innerHTML=`<div class="sub" style="margin-top:8px">틱톡 영상 불러오는 중…</div>`;
+    const id=await tiktokId(l.url);
+    box.innerHTML = id
+      ? `<iframe class="embed tt" src="https://www.tiktok.com/player/v1/${esc(id)}?music_info=1&description=1" loading="lazy" allow="fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>`
+      : `<div class="sub" style="margin-top:8px">이 틱톡은 앱 안에서 재생할 수 없어요. 위의 링크를 눌러 열어 주세요.</div>`;
+  }
+}
+let embedIO = null;
+function autoEmbedOn(){ try{ return localStorage.getItem("autoEmbed")!=="0"; }catch{ return true; } }
+function lazyMount(){
+  if(embedIO){ embedIO.disconnect(); embedIO=null; }
+  if(!autoEmbedOn() || !("IntersectionObserver" in window)) return;
+  embedIO = new IntersectionObserver((es)=>{
+    es.forEach(e=>{
+      if(!e.isIntersecting) return;
+      embedIO.unobserve(e.target);
+      const l=links.find(x=>x.id===e.target.dataset.id), box=e.target.querySelector(".embedbox");
+      if(l && box && !box.innerHTML && !box.dataset.off && (l.platform==="youtube"||l.platform==="tiktok")) mountEmbed(box,l);
+    });
+  },{rootMargin:"300px"});
+  document.querySelectorAll("#list .item").forEach(it=>embedIO.observe(it));
+}
+$("autoEmbed").checked = autoEmbedOn();
+$("autoEmbed").onchange = (e)=>{ try{ localStorage.setItem("autoEmbed", e.target.checked?"1":"0"); }catch{} render(); };
+
 /* ---------- 목록 동작 ---------- */
 $("list").onclick = async (e)=>{
   const b=e.target.closest("button[data-a]"); if(!b) return;
@@ -405,16 +438,9 @@ $("list").onclick = async (e)=>{
   const a=b.dataset.a;
   if(a==="play"){
     const box=it.querySelector(".embedbox");
-    if(box.innerHTML){ box.innerHTML=""; return; }
-    if(l.platform==="youtube"){
-      box.innerHTML=`<iframe class="embed" src="https://www.youtube-nocookie.com/embed/${esc(youtubeId(l.url))}?playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
-    } else if(l.platform==="tiktok"){
-      box.innerHTML=`<div class="sub" style="margin-top:8px">틱톡 영상 불러오는 중…</div>`;
-      const id=await tiktokId(l.url);
-      box.innerHTML = id
-        ? `<iframe class="embed tt" src="https://www.tiktok.com/player/v1/${esc(id)}?music_info=1&description=1" allow="fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>`
-        : `<div class="sub" style="margin-top:8px">이 틱톡은 앱 안에서 재생할 수 없어요. 위의 링크를 눌러 열어 주세요.</div>`;
-    }
+    if(box.innerHTML){ box.innerHTML=""; box.dataset.off="1"; return; }
+    delete box.dataset.off;
+    await mountEmbed(box,l);
   } else if(a==="st"){
     const nx={new:"working",working:"done",done:"new"}[l.status]||"new";
     await patch(l,{status:nx});
