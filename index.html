@@ -43,9 +43,9 @@ button.bad{color:var(--bad)}
 .folder.dashed{border-style:dashed;display:flex;align-items:center;justify-content:center;color:var(--sub);min-height:92px}
 
 /* 목록 */
-.item{display:flex;gap:12px;border-top:1px solid var(--line);padding:12px 0}
+.item{display:flex;gap:10px;border-top:1px solid var(--line);padding:12px 0}
 .item:first-child{border-top:0}
-.thumb{flex:0 0 96px;height:96px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;background:#333;position:relative}
+.thumb{flex:0 0 56px;height:56px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;background:#333;position:relative}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .thumb .play{position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;padding:1px 6px;border-radius:6px}
 .p-youtube{background:#c4302b}.p-tiktok{background:#111;box-shadow:inset 3px 0 #25f4ee,inset -3px 0 #fe2c55}.p-xhs{background:#ff2442}.p-etc{background:#556}
@@ -57,6 +57,10 @@ button.bad{color:var(--bad)}
 .item .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .item .acts button{padding:4px 9px;font-size:13px}
 .embed.tt{aspect-ratio:9/16;max-width:340px;display:block}
+.content{flex:1;min-width:0}
+.thumb.wide{display:block;width:100%;height:auto;aspect-ratio:16/9;flex:none;border-radius:10px;margin-bottom:8px}
+.thumb.wide img{height:100%}
+.thumb.wide .play{right:8px;bottom:8px;font-size:13px;padding:3px 10px}
 .embed{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;margin-top:8px;background:#000}
 
 /* 선택 */
@@ -361,15 +365,18 @@ function syncBar(){
 function itemHtml(l){
   const yt = l.platform==="youtube" ? youtubeId(l.url) : null;
   const P = PLAT[l.platform]||PLAT.etc;
-  const thumb = yt
-    ? `<img src="https://img.youtube.com/vi/${esc(yt)}/mqdefault.jpg" alt="" loading="lazy"><span class="play">▶</span>`
-    : `<span>${P.icon}</span>`;
+  const media = yt
+    ? `<div class="embedbox"><a class="thumb wide p-youtube" href="${esc(l.url)}" target="_blank" rel="noopener"><img src="https://img.youtube.com/vi/${esc(yt)}/mqdefault.jpg" alt="" loading="lazy"><span class="play">▶ 재생</span></a></div>`
+    : `<div class="embedbox"></div>`;
+  const mini = yt ? "" : `<a class="thumb p-${l.platform}" href="${esc(l.url)}" target="_blank" rel="noopener" style="flex:0 0 44px;height:44px;font-size:22px">${P.icon}</a>`;
+  const canPlay = !!yt || l.platform==="tiktok";
   return `
   <div class="item${sel.has(l.id)?" sel":""}" data-id="${l.id}">
     <input type="checkbox" class="ck" ${sel.has(l.id)?"checked":""} aria-label="선택">
-    <a class="thumb p-${l.platform}" href="${esc(l.url)}" target="_blank" rel="noopener">${thumb}</a>
-    <div class="body">
+    <div class="content">
+      ${media}
       <div class="row">
+        ${mini}
         <span class="badge" style="background:${BADGE_BG[l.platform]||"#667"}">${P.icon} ${P.name}</span>
         <span class="tag st-${l.status}">${STATUS[l.status]||l.status}</span>
         ${l.categories.map(c=>`<span class="tag">${esc(c)}</span>`).join("")}
@@ -378,10 +385,9 @@ function itemHtml(l){
       ${l.memo?`<div class="sub">${esc(l.memo)}</div>`:""}
       <div class="sub">${new Date(l.created_at).toLocaleDateString("ko-KR")}</div>
       <div class="acts">
-        ${(yt||l.platform==="tiktok")?`<button data-a="play">▶ 재생</button>`:""}
+        ${canPlay?`<button data-a="play">▶ 재생</button>`:""}
         <button data-a="st">상태</button><button data-a="cat">폴더 이동</button><button data-a="memo">메모</button><button data-a="del" class="bad">삭제</button>
       </div>
-      <div class="embedbox"></div>
     </div>
   </div>`;
 }
@@ -400,19 +406,22 @@ async function tiktokId(u){
   return null;
 }
 
-/* 영상 붙이기: 유튜브·틱톡을 항목 아래에 띄운다 */
+/* 영상 붙이기: 유튜브는 썸네일 자리를 영상으로 바꾼다. 틱톡은 ▶ 재생을 눌렀을 때만(틱톡이 삽입을 막아 둔 경우가 많음) */
 async function mountEmbed(box,l){
   if(l.platform==="youtube"){
     const id=youtubeId(l.url); if(!id) return;
+    box._orig = box.innerHTML; box.dataset.on="1";
     box.innerHTML=`<iframe class="embed" src="https://www.youtube-nocookie.com/embed/${esc(id)}?playsinline=1" loading="lazy" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
   } else if(l.platform==="tiktok"){
+    box._orig = box.innerHTML; box.dataset.on="1";
     box.innerHTML=`<div class="sub" style="margin-top:8px">틱톡 영상 불러오는 중…</div>`;
     const id=await tiktokId(l.url);
     box.innerHTML = id
-      ? `<iframe class="embed tt" src="https://www.tiktok.com/player/v1/${esc(id)}?music_info=1&description=1" loading="lazy" allow="fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>`
-      : `<div class="sub" style="margin-top:8px">이 틱톡은 앱 안에서 재생할 수 없어요. 위의 링크를 눌러 열어 주세요.</div>`;
+      ? `<iframe class="embed tt" src="https://www.tiktok.com/player/v1/${esc(id)}?embed_from=oembed&music_info=1&description=1&autoplay=1&muted=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe><div class="sub">검은 화면에 틱톡 로고만 보이면 틱톡이 앱 안 재생을 막은 영상이에요. 위 링크를 눌러 열어 주세요.</div>`
+      : `<div class="sub" style="margin-top:8px">이 틱톡은 앱 안에서 재생할 수 없어요. 링크를 눌러 열어 주세요.</div>`;
   }
 }
+function unmountEmbed(box){ box.innerHTML = box._orig || ""; delete box.dataset.on; }
 let embedIO = null;
 function autoEmbedOn(){ try{ return localStorage.getItem("autoEmbed")!=="0"; }catch{ return true; } }
 function lazyMount(){
@@ -423,7 +432,7 @@ function lazyMount(){
       if(!e.isIntersecting) return;
       embedIO.unobserve(e.target);
       const l=links.find(x=>x.id===e.target.dataset.id), box=e.target.querySelector(".embedbox");
-      if(l && box && !box.innerHTML && !box.dataset.off && (l.platform==="youtube"||l.platform==="tiktok")) mountEmbed(box,l);
+      if(l && box && !box.dataset.on && !box.dataset.off && l.platform==="youtube") mountEmbed(box,l);
     });
   },{rootMargin:"300px"});
   document.querySelectorAll("#list .item").forEach(it=>embedIO.observe(it));
@@ -438,7 +447,7 @@ $("list").onclick = async (e)=>{
   const a=b.dataset.a;
   if(a==="play"){
     const box=it.querySelector(".embedbox");
-    if(box.innerHTML){ box.innerHTML=""; box.dataset.off="1"; return; }
+    if(box.dataset.on){ unmountEmbed(box); box.dataset.off="1"; return; }
     delete box.dataset.off;
     await mountEmbed(box,l);
   } else if(a==="st"){
