@@ -144,6 +144,7 @@ body.hasbar #msg{bottom:calc(120px + env(safe-area-inset-bottom))}
       <button id="btnExportAll">📊 전체 엑셀로 내보내기</button>
       <button id="btnOut" class="sub">로그아웃</button>
     </div>
+    <div class="sub" id="diag" style="margin-top:14px;word-break:break-all;opacity:.7"></div>
   </div>
 
   <!-- 폴더 -->
@@ -211,6 +212,13 @@ const SHARE = (()=>{
   const v = [p.get("title"),p.get("text"),p.get("url")].filter(Boolean).join("\n");
   if(v){ try{ localStorage.setItem("pendingShare", v); }catch{} }
   return v;
+})();
+// 진단: 앱(TWA)으로 열렸는지, 공유 값이 도착했는지 보여 준다.
+const DIAG = (()=>{
+  const ref = document.referrer || "(없음)";
+  const app = ref.startsWith("android-app://") ? "앱(인증됨)" : "브라우저 창(인증 안 됨?)";
+  const mode = matchMedia("(display-mode: standalone)").matches ? "standalone" : "browser";
+  return `진단 · 열린 방식: ${app} · 표시: ${mode} · 출처: ${ref} · 받은 주소 값: ${location.search ? location.search.slice(0,120) : "(없음)"} · 버전 v7`;
 })();
 let sb, cats = [], links = [];
 let pick = new Set(), fStatus = "all", fPlat = "all";
@@ -390,6 +398,7 @@ function renderHome(){
   if(none.length) g.append(plainCard("📄","미분류",none,()=>go("none")));
   const add=document.createElement("div"); add.className="folder dashed"; add.textContent="＋ 새 폴더"; add.onclick=()=>addCategory(""); g.append(add);
   syncFBar();
+  $("diag").textContent = DIAG;
 }
 
 function folderRows(r){
