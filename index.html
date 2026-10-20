@@ -73,6 +73,15 @@ button.bad{color:var(--bad)}
 body.hasbar .wrap{padding-bottom:150px}
 body.hasbar #msg{bottom:calc(120px + env(safe-area-inset-bottom))}
 
+/* 폴더 꾹 누르기 */
+.folder{position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.folder.fsel{outline:2px solid var(--ac)}
+.fck{position:absolute;top:8px;right:8px;margin:0}
+.menu{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.menu button{text-align:left;padding:12px}
+#fbar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:15;display:none}
+#fbar .in{max-width:680px;margin:0 auto}
+
 /* 모달 */
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
 #modal .box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;width:100%;max-width:420px;max-height:80vh;overflow:auto}
@@ -116,6 +125,7 @@ body.hasbar #msg{bottom:calc(120px + env(safe-area-inset-bottom))}
         <input id="q" type="text" class="grow" placeholder="전체 검색 (링크·메모)">
       </div>
       <div class="grid" id="folders"></div>
+      <div class="sub" style="margin-top:10px">💡 폴더를 꾹 누르면 이름 변경·삭제·순서 이동·선택을 할 수 있어요.</div>
     </div>
 
     <div class="row">
@@ -161,6 +171,15 @@ body.hasbar #msg{bottom:calc(120px + env(safe-area-inset-bottom))}
     <button id="bClear">해제</button>
   </div>
 </div></div>
+<div id="fbar"><div class="in">
+  <div class="sub" id="fbarInfo" style="margin-bottom:6px"></div>
+  <div class="row">
+    <button class="pri" id="fXls">📊 엑셀</button>
+    <button id="fAll">전체 선택</button>
+    <button id="fDel" class="bad">삭제</button>
+    <button id="fClear">해제</button>
+  </div>
+</div></div>
 <div id="msg"></div>
 <div id="modal" class="hide"><div class="box" id="modalBox"></div></div>
 
@@ -180,6 +199,7 @@ let sb, cats = [], links = [];
 let pick = new Set(), fStatus = "all", fPlat = "all";
 let authed = false;
 const sel = new Set();
+const fsel = new Set();   // 선택한 폴더(카테고리) id
 let curRows = [];
 
 const PLAT = {
@@ -227,7 +247,7 @@ function route(){
   if(h==="none") return {t:"none"};
   return {t:"home"};
 }
-function go(h){ sel.clear(); if(!h){ history.pushState(null,"",location.pathname); render(); } else { location.hash = encodeURIComponent(h); } }
+function go(h){ sel.clear(); fsel.clear(); if(!h){ history.pushState(null,"",location.pathname); render(); } else { location.hash = encodeURIComponent(h); } }
 window.addEventListener("hashchange", ()=>{ fStatus="all"; fPlat="all"; sel.clear(); render(); });
 window.addEventListener("popstate", render);
 
@@ -284,7 +304,8 @@ function render(){
   const r = route();
   $("home").classList.toggle("hide", r.t!=="home");
   $("folder").classList.toggle("hide", r.t==="home");
-  if(r.t==="home") renderHome(); else renderFolder(r);
+  if(r.t==="home") renderHome();
+  else { fsel.clear(); $("fbar").style.display="none"; renderFolder(r); }
 }
 
 function platMarks(list){
@@ -306,16 +327,19 @@ function renderHome(){
     const rows=links.filter(l=>(l.url+" "+l.memo+" "+l.title).toLowerCase().includes(q));
     g.innerHTML = `<div class="sub" style="grid-column:1/-1">'${esc(q)}' 검색 결과 ${rows.length}개 — 아래 폴더를 눌러 열면 그 안에서 볼 수 있어요.</div>`;
   }
-  const mk=(icon,name,list,h)=>{
-    const d=document.createElement("div"); d.className="folder";
-    d.innerHTML=`<div class="fi">${icon}</div><div class="fn">${esc(name)}</div><div class="fc">${list.length}개</div><div class="fp">${platMarks(list)||"&nbsp;"}</div>`;
-    d.onclick=()=>go(h); g.append(d);
+  const mk=(icon,name,list,h,cat)=>{
+    const d=document.createElement("div"); d.className="folder"+(cat&&fsel.has(cat.id)?" fsel":"");
+    const ck = cat && fsel.size ? `<input type="checkbox" class="ck fck" ${fsel.has(cat.id)?"checked":""} tabindex="-1">` : "";
+    d.innerHTML=`${ck}<div class="fi">${icon}</div><div class="fn">${esc(name)}</div><div class="fc">${list.length}개</div><div class="fp">${platMarks(list)||"&nbsp;"}</div>`;
+    attachPress(d, cat, ()=>{ if(cat && fsel.size){ toggleF(cat.id); } else go(h); });
+    g.append(d);
   };
-  mk("🗂️","전체",links,"all");
-  cats.forEach(c=>mk("📁",c.name,links.filter(l=>l.categories.includes(c.name)),"f="+c.name));
+  mk("🗂️","전체",links,"all",null);
+  cats.forEach(c=>mk("📁",c.name,links.filter(l=>l.categories.includes(c.name)),"f="+c.name,c));
   const none=links.filter(l=>!l.categories.length);
-  if(none.length) mk("📄","미분류",none,"none");
+  if(none.length) mk("📄","미분류",none,"none",null);
   const add=document.createElement("div"); add.className="folder dashed"; add.textContent="＋ 새 폴더"; add.onclick=addCategory; g.append(add);
+  syncFBar();
 }
 
 function folderRows(r){
@@ -361,7 +385,7 @@ function syncBar(){
   $("selAll").indeterminate = inView>0 && inView<curRows.length;
   $("selCnt").textContent = n ? `(${n}개 선택됨)` : "";
   $("bar").style.display = n ? "block" : "none";
-  document.body.classList.toggle("hasbar", n>0);
+  document.body.classList.toggle("hasbar", n>0 || fsel.size>0);
   $("barInfo").textContent = `${n}개 선택됨`;
 }
 
@@ -606,8 +630,11 @@ $("btnAdd").onclick=async()=>{
   if(await saveUrls(urls,cs,"")) $("addUrl").value="";
 };
 $("btnBack").onclick=()=>go("");
-$("btnRenFolder").onclick=async()=>{
-  const r=route(); const c=cats.find(x=>x.name===r.name); if(!c) return;
+$("btnRenFolder").onclick=()=>{ const c=cats.find(x=>x.name===route().name); if(c) renameCat(c, true); };
+$("btnDelFolder").onclick=()=>{ const c=cats.find(x=>x.name===route().name); if(c) deleteCats([c], true); };
+
+/* ---------- 폴더 편집 (이름 변경 · 삭제 · 순서 · 선택) ---------- */
+async function renameCat(c, stay){
   const nn=(prompt("폴더 이름 바꾸기", c.name)||"").trim();
   if(!nn || nn===c.name) return;
   if(cats.some(x=>x.name===nn)) return toast("이미 있는 이름이에요.");
@@ -616,18 +643,80 @@ $("btnRenFolder").onclick=async()=>{
   for(const l of links.filter(l=>l.categories.includes(c.name))){
     await sb.from("links").update({categories:l.categories.map(x=>x===c.name?nn:x)}).eq("id",l.id);
   }
-  await loadAll(); location.hash = encodeURIComponent("f="+nn); toast(`'${c.name}' → '${nn}' 으로 바꿨어요.`);
+  await loadAll();
+  if(stay) location.hash = encodeURIComponent("f="+nn);
+  toast(`'${c.name}' → '${nn}' 으로 바꿨어요.`);
+}
+async function deleteCats(list, backHome){
+  if(!list.length) return;
+  const nm = list.length===1 ? `'${list[0].name}' 폴더를` : `선택한 폴더 ${list.length}개를`;
+  if(!confirm(`${nm} 삭제할까요?\n안에 있던 링크는 삭제되지 않아요. (다른 폴더가 없으면 '미분류'가 돼요)`)) return;
+  for(const c of list){
+    const {error}=await sb.from("categories").delete().eq("id",c.id);
+    if(error) return toast(error.message);
+    for(const l of links.filter(l=>l.categories.includes(c.name))){
+      await sb.from("links").update({categories:l.categories.filter(x=>x!==c.name)}).eq("id",l.id);
+    }
+    pick.delete(c.name);
+  }
+  fsel.clear(); toast(`폴더 ${list.length}개를 삭제했어요.`);
+  if(backHome) go(""); await loadAll();
+}
+async function moveCat(c, dir){
+  const i=cats.findIndex(x=>x.id===c.id), j=i+dir;
+  if(j<0 || j>=cats.length) return toast("더 옮길 수 없어요.");
+  const arr=[...cats]; [arr[i],arr[j]]=[arr[j],arr[i]];
+  const ups=[];
+  arr.forEach((x,k)=>{ if(x.sort!==k+1) ups.push(sb.from("categories").update({sort:k+1}).eq("id",x.id)); });
+  await Promise.all(ups); await loadAll();
+}
+function toggleF(id){ fsel.has(id)?fsel.delete(id):fsel.add(id); renderHome(); }
+function syncFBar(){
+  const n=fsel.size, show = n>0 && route().t==="home";
+  $("fbar").style.display = show ? "block" : "none";
+  $("fbarInfo").textContent = `폴더 ${n}개 선택됨 · 폴더를 눌러 선택을 바꿔요`;
+  document.body.classList.toggle("hasbar", show || sel.size>0);
+}
+$("fClear").onclick=()=>{ fsel.clear(); renderHome(); };
+$("fAll").onclick=()=>{ cats.forEach(c=>fsel.add(c.id)); renderHome(); };
+$("fDel").onclick=()=>deleteCats(cats.filter(c=>fsel.has(c.id)), false);
+$("fXls").onclick=()=>{
+  const names=new Set(cats.filter(c=>fsel.has(c.id)).map(c=>c.name));
+  exportRows(links.filter(l=>l.categories.some(x=>names.has(x))), "폴더선택");
 };
-$("btnDelFolder").onclick=async()=>{
-  const r=route(); const c=cats.find(x=>x.name===r.name); if(!c) return;
-  if(!confirm(`'${c.name}' 폴더를 삭제할까요?\n안에 있던 링크는 삭제되지 않아요. (다른 폴더가 없으면 '미분류'가 돼요)`)) return;
-  const {error}=await sb.from("categories").delete().eq("id",c.id);
-  if(error) return toast(error.message);
-  // 링크에 붙은 이 이름도 지운다
-  const affected=links.filter(l=>l.categories.includes(c.name));
-  for(const l of affected){ await sb.from("links").update({categories:l.categories.filter(x=>x!==c.name)}).eq("id",l.id); }
-  toast("폴더를 삭제했어요."); go(""); await loadAll();
-};
+function openFolderMenu(c){
+  const box=$("modalBox");
+  box.innerHTML=`<b>📁 ${esc(c.name)}</b>
+    <div class="menu">
+      <button data-m="open">열기</button><button data-m="ren">✏️ 이름 변경</button><button data-m="sel">☑️ 선택(체크)</button>
+      <button data-m="up">⬆ 앞으로 옮기기</button><button data-m="down">⬇ 뒤로 옮기기</button><button data-m="del" class="bad">🗑 삭제</button>
+    </div>`;
+  box.onclick=async(e)=>{
+    const b=e.target.closest("button[data-m]"); if(!b) return;
+    $("modal").classList.add("hide");
+    const m=b.dataset.m;
+    if(m==="open") go("f="+c.name);
+    else if(m==="ren") await renameCat(c,false);
+    else if(m==="sel"){ fsel.add(c.id); renderHome(); }
+    else if(m==="up") await moveCat(c,-1);
+    else if(m==="down") await moveCat(c,1);
+    else if(m==="del") await deleteCats([c],false);
+  };
+  $("modal").classList.remove("hide");
+}
+/* 꾹 누르기(0.5초) = 편집 메뉴, 짧게 누르기 = 열기(선택 중이면 선택 바꾸기) */
+function attachPress(el, cat, onTap){
+  let timer=null, sx=0, sy=0, fired=false;
+  const clear=()=>{ clearTimeout(timer); timer=null; };
+  el.addEventListener("pointerdown",(e)=>{
+    fired=false; sx=e.clientX; sy=e.clientY; if(!cat) return;
+    timer=setTimeout(()=>{ fired=true; try{ navigator.vibrate&&navigator.vibrate(20); }catch{} openFolderMenu(cat); },500);
+  });
+  el.addEventListener("pointermove",(e)=>{ if(timer && Math.hypot(e.clientX-sx,e.clientY-sy)>10) clear(); });
+  ["pointerup","pointercancel","pointerleave"].forEach(t=>el.addEventListener(t,clear));
+  el.addEventListener("click",(e)=>{ if(fired){ e.preventDefault(); fired=false; return; } onTap(); });
+  el.addEventListener("contextmenu",(e)=>{ e.preventDefault(); if(cat && !fired){ fired=true; clear(); openFolderMenu(cat); } });
+}
 
 /* ---------- 카테고리 추가 ---------- */
 async function addCategory(){
