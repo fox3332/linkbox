@@ -57,6 +57,7 @@ button.bad{color:var(--bad)}
 .item .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .item .acts button{padding:4px 9px;font-size:13px}
 .embed.tt{aspect-ratio:9/16;max-width:340px;display:block}
+.vid{width:100%;max-height:72vh;background:#000;border-radius:10px;display:block;margin-bottom:8px}
 .content{flex:1;min-width:0}
 .thumb.wide{display:block;width:100%;height:auto;aspect-ratio:16/9;flex:none;border-radius:10px;margin-bottom:8px}
 .thumb.wide img{height:100%}
@@ -129,6 +130,7 @@ body.hasbar #msg{bottom:calc(120px + env(safe-area-inset-bottom))}
       <button id="btnBack">← 폴더</button>
       <span class="grow"></span>
       <button id="btnExport">📊 엑셀</button>
+      <button id="btnRenFolder">✏️ 이름 변경</button>
       <button id="btnDelFolder" class="bad">폴더 삭제</button>
     </div>
     <div class="card">
@@ -328,6 +330,7 @@ function renderFolder(r){
   const base = folderRows(r);
   $("title").textContent = (r.t==="all"?"🗂️ ":r.t==="none"?"📄 ":"📁 ")+folderLabel(r)+` (${base.length})`;
   $("btnDelFolder").classList.toggle("hide", r.t!=="cat");
+  $("btnRenFolder").classList.toggle("hide", r.t!=="cat");
   $("addUrl").placeholder = r.t==="cat" ? `'${r.name}' 폴더에 링크 추가 (붙여넣기)` : "링크 추가 (붙여넣기)";
 
   const pf=$("platFilter"); pf.innerHTML="";
@@ -365,11 +368,13 @@ function syncBar(){
 function itemHtml(l){
   const yt = l.platform==="youtube" ? youtubeId(l.url) : null;
   const P = PLAT[l.platform]||PLAT.etc;
-  const media = yt
+  const media = l.preview_url
+    ? `<div class="embedbox" data-on="1"><video class="vid" controls playsinline preload="none"${l.thumb_url?` poster="${esc(l.thumb_url)}"`:""} src="${esc(l.preview_url)}"></video></div>`
+    : yt
     ? `<div class="embedbox"><a class="thumb wide p-youtube" href="${esc(l.url)}" target="_blank" rel="noopener"><img src="https://img.youtube.com/vi/${esc(yt)}/mqdefault.jpg" alt="" loading="lazy"><span class="play">▶ 재생</span></a></div>`
     : `<div class="embedbox"></div>`;
-  const mini = yt ? "" : `<a class="thumb p-${l.platform}" href="${esc(l.url)}" target="_blank" rel="noopener" style="flex:0 0 44px;height:44px;font-size:22px">${P.icon}</a>`;
-  const canPlay = !!yt || l.platform==="tiktok";
+  const mini = (yt || l.preview_url) ? "" : `<a class="thumb p-${l.platform}" href="${esc(l.url)}" target="_blank" rel="noopener" style="flex:0 0 44px;height:44px;font-size:22px">${P.icon}</a>`;
+  const canPlay = !l.preview_url && (!!yt || l.platform==="tiktok");
   return `
   <div class="item${sel.has(l.id)?" sel":""}" data-id="${l.id}">
     <input type="checkbox" class="ck" ${sel.has(l.id)?"checked":""} aria-label="선택">
@@ -601,6 +606,18 @@ $("btnAdd").onclick=async()=>{
   if(await saveUrls(urls,cs,"")) $("addUrl").value="";
 };
 $("btnBack").onclick=()=>go("");
+$("btnRenFolder").onclick=async()=>{
+  const r=route(); const c=cats.find(x=>x.name===r.name); if(!c) return;
+  const nn=(prompt("폴더 이름 바꾸기", c.name)||"").trim();
+  if(!nn || nn===c.name) return;
+  if(cats.some(x=>x.name===nn)) return toast("이미 있는 이름이에요.");
+  const {error}=await sb.from("categories").update({name:nn}).eq("id",c.id);
+  if(error) return toast(error.message);
+  for(const l of links.filter(l=>l.categories.includes(c.name))){
+    await sb.from("links").update({categories:l.categories.map(x=>x===c.name?nn:x)}).eq("id",l.id);
+  }
+  await loadAll(); location.hash = encodeURIComponent("f="+nn); toast(`'${c.name}' → '${nn}' 으로 바꿨어요.`);
+};
 $("btnDelFolder").onclick=async()=>{
   const r=route(); const c=cats.find(x=>x.name===r.name); if(!c) return;
   if(!confirm(`'${c.name}' 폴더를 삭제할까요?\n안에 있던 링크는 삭제되지 않아요. (다른 폴더가 없으면 '미분류'가 돼요)`)) return;
